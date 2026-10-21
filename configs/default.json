@@ -1,0 +1,11 @@
+[
+  {"name": "C0_original",          "steps": [{"export": ["ply"]}]},
+  {"name": "C1_clean_light",       "steps": [{"clean": {"preset": "light"}}, {"export": ["ply", "splat"]}]},
+  {"name": "C2_clean_medium",      "steps": [{"clean": {"preset": "medium"}}, {"export": ["ply", "splat"]}]},
+  {"name": "C3a_prune75_proxy",    "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75}}, {"export": ["ply"]}]},
+  {"name": "C3b_prune75_views",    "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75, "orbit": 32, "occlusion": true}}, {"export": ["ply", "splat"]}]},
+  {"name": "C4_views75_sh1",       "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75, "orbit": 32, "occlusion": true}}, {"sh": {"degree": 1}}, {"export": ["ply"]}]},
+  {"name": "C5_views75_gsq_vq",    "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75, "orbit": 32, "occlusion": true}}, {"export": ["gsq"]}, {"gsq": {"sh": "vq", "codebook": 4096}}]},
+  {"name": "C6_views50_sh1_gsq",   "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.5, "orbit": 32, "occlusion": true}}, {"sh": {"degree": 1}}, {"export": ["gsq"]}, {"gsq": {"sh": "8bit"}}]},
+  {"name": "C7_views35_gsq_vq",    "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.35, "orbit": 32, "occlusion": true}}, {"export": ["gsq"]}, {"gsq": {"sh": "vq", "codebook": 4096, "sh_zero": 0.05}}]}
+]

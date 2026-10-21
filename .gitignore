@@ -1,0 +1,6 @@
+data/
+results/**/*.ply
+results/**/*.splat
+results/**/*.gsq
+__pycache__/
+*.pyc

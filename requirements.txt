@@ -1,0 +1,10 @@
+# Obligatoire (tous les scripts d'optimisation)
+numpy>=1.22
+# Recommandé
+scipy          # filtre SOR (k plus proches voisins) dans clean.py
+matplotlib     # histogrammes de analyze.py
+pillow         # metrics_images.py
+opencv-python  # extract_frames.py
+# Optionnel : LPIPS (metrics_images.py --lpips)
+# torch
+# lpips
