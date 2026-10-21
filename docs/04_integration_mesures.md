@@ -17,10 +17,11 @@
 Lancement :
 ```bash
 cd 3dgs-optimisation
-python3 -m http.server 8123
+python3 app.py
 ```
-puis ouvrir `http://localhost:8123/viewer/` (ou
-`http://localhost:8123/viewer/?models=../results/synthetic/C0_original.ply,../results/synthetic/C3_prune50.ply`).
+puis ouvrir `http://localhost:8000` → onglet **Visualiseur** (ou, depuis **Résultats**, cocher des versions
+et cliquer « Comparer la sélection »). Les mesures d'un benchmark sont enregistrées automatiquement dans
+`results/<scène>/bench_*.json` et affichées dans l'onglet Résultats.
 
 ### Déroulement d'un benchmark
 1. Liste de modèles : **le premier est la référence** de qualité (en général C0 ou C2 nettoyé).

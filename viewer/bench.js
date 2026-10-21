@@ -186,8 +186,10 @@ async function flyPath(durationMs) {
   return dts;
 }
 
+let initialLoad = null;
 async function benchmark() {
   if (!models.length) return log('Aucun modèle.');
+  if (initialLoad) await initialLoad.catch(() => {});  // ne pas lancer deux chargements à la fois
   if (poses.length < 2) { poses = orbitPoses(8); updatePoseCount(); log('Poses : orbite automatique (8).'); }
   setResolution();
   const env = {
@@ -233,6 +235,7 @@ async function benchmark() {
     lastResults = { env, results };
     $('download').disabled = false;
     log('Terminé.');
+    await saveToServer(lastResults);
   } catch (e) {
     console.error(e); log('Erreur : ' + e.message);
   } finally {
@@ -277,6 +280,19 @@ function gpuName() {
   const ext = gl.getExtension('WEBGL_debug_renderer_info');
   return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 }
+// Avec le portail (app.py), les mesures sont rangées dans results/<scène>/ et apparaissent dans « Résultats ».
+async function saveToServer(data) {
+  const src = models[0]?.url || '';
+  const m = src.match(/results\/([^/]+)\//) || src.match(/data\/([^/]+?)(\.[^./]+)+$/);
+  const scene = m ? m[1] : 'benchmarks';
+  try {
+    const r = await fetch(`/api/bench?scene=${encodeURIComponent(scene)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    if (r.ok) log(`Enregistré dans ${(await r.json()).path} (onglet Résultats du portail).`);
+  } catch { /* visualiseur utilisé sans le portail : seul le téléchargement est possible */ }
+}
+
 function download(name, obj) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' }));
@@ -317,4 +333,9 @@ if (params.get('poses')) {
 }
 setUp();
 setResolution();
+if (models.length) {  // affiche directement le premier modèle demandé
+  initialLoad = loadModel(models[0]);
+  initialLoad.then((r) => log(`${r.name} : ${r.splatCount} gaussiennes, ${fmt(r.totalMs, 0)} ms`))
+    .catch((e) => log('Erreur : ' + e.message));
+}
 window.bench = { benchmark, loadModel, get poses() { return poses; }, get results() { return lastResults; } };

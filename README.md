@@ -7,10 +7,35 @@ Le 3DGS reconstruit des scènes réelles avec un réalisme photographique, mais 
 le mobile. Ce dépôt contient **la chaîne complète** pour capturer, nettoyer, élaguer, compresser et
 mesurer des modèles 3DGS, ainsi que **le dossier technique** qui détaille les méthodes.
 
+## Démarrer en 30 secondes : le portail
+
+```bash
+git clone git@github.com:thepunisher746000-afk/3dgs-optimisation.git
+cd 3dgs-optimisation
+pip install -r requirements.txt     # numpy suffit pour l'essentiel
+python3 app.py                      # puis ouvrir http://localhost:8000
+```
+
+Le portail regroupe tout le projet dans le navigateur :
+
+| Onglet | Ce qu'on y fait |
+|---|---|
+| **Accueil** | Parcours en 4 étapes, bouton « Essai rapide » (scène de test + toutes les configurations en un clic) |
+| **Modèles** | Importer un .ply par glisser-déposer, voir tous les modèles (taille, nombre de gaussiennes), les ouvrir ou les supprimer |
+| **Optimiser** | Chaque outil sous forme de formulaire expliqué (Analyser, Nettoyer, Élaguer, Couleurs SH, Compresser, Tout comparer) ; journal en direct ; bouton pour enchaîner l'étape suivante sur le fichier produit ; la commande équivalente est affichée et copiable |
+| **Résultats** | Tableaux comparatifs par scène, diagnostic, détail du nettoyage, mesures du visualiseur ; cocher des versions pour les comparer |
+| **Visualiseur** | Banc de mesure (chargement, FPS, PSNR/SSIM) ; les mesures sont enregistrées automatiquement dans Résultats |
+| **Documentation** | Le dossier technique avec formules, sommaire et liens entre chapitres |
+
+Le serveur n'écoute que sur la machine locale. Les fichiers importés vont dans `data/`, les sorties dans
+`results/<scène>/` (non versionnés : chacun garde ses modèles en local).
+
 ## Contenu
 
 ```text
 3dgs-optimisation/
+├── app.py                        portail web (python3 app.py), bibliothèque standard uniquement
+├── ui/                           interface du portail (HTML/CSS/JS, sans compilation)
 ├── docs/                         dossier technique (algorithmes et méthodes détaillés)
 │   ├── 01_fondements_3dgs.md        représentation, rendu, entraînement, pourquoi c'est lourd
 │   ├── 02_capture_generation.md     protocole de capture, outils (PostShot, Polycam, Brush…)
@@ -35,24 +60,15 @@ mesurer des modèles 3DGS, ainsi que **le dossier technique** qui détaille les 
 └── results/                      sorties de pipeline.py et du visualiseur
 ```
 
-## Démarrage rapide
+## Utilisation en ligne de commande (sans le portail)
+
+Tous les outils restent utilisables directement ; le portail affiche la commande exacte de chaque action.
 
 ```bash
-cd 3dgs-optimisation
-pip install -r requirements.txt            # numpy suffit pour la chaîne principale
-
-# 1. Valider la chaîne sur la scène synthétique
 python3 scripts/make_synthetic.py data/synthetic.ply
 python3 scripts/analyze.py data/synthetic.ply
 python3 scripts/pipeline.py data/synthetic.ply --out results/synthetic --config configs/default.json --gzip
-
-# 2. Mesurer dans le navigateur
-python3 -m http.server 8123
-#    → http://localhost:8123/viewer/?models=../results/synthetic/C2_clean_medium.ply,../results/synthetic/C5_prune50_gsq_vq.gsq.ply
-#    → « Lancer le benchmark », puis « Télécharger résultats JSON »
-
-# 3. Sur une vraie capture (PLY exporté par PostShot / Polycam / Brush…)
-python3 scripts/pipeline.py data/sceneA/sceneA.ply --out results/sceneA --config configs/default.json --gzip
+python3 scripts/pipeline.py data/sceneA.ply --out results/sceneA --config configs/default.json --gzip   # vraie capture
 ```
 
 ## Premiers résultats (scène synthétique, 200 000 gaussiennes)
