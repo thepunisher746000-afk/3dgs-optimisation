@@ -338,4 +338,4 @@ if (models.length) {  // affiche directement le premier modèle demandé
   initialLoad.then((r) => log(`${r.name} : ${r.splatCount} gaussiennes, ${fmt(r.totalMs, 0)} ms`))
     .catch((e) => log('Erreur : ' + e.message));
 }
-window.bench = { benchmark, loadModel, get poses() { return poses; }, get results() { return lastResults; } };
+window.bench = { benchmark, loadModel, applyPose, get poses() { return poses; }, get results() { return lastResults; } };

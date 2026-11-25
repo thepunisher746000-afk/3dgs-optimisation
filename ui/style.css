@@ -71,7 +71,7 @@ h3 { font-size: 14px; margin: 0 0 8px; }
 .btn svg { width: 16px; height: 16px; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
-.badge { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 600; background: var(--surface-2); color: var(--muted); }
+.badge { display: inline-block; white-space: nowrap; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 600; background: var(--surface-2); color: var(--muted); }
 .badge.ok { background: var(--ok-soft); color: var(--ok); } .badge.err { background: var(--err-soft); color: var(--err); }
 .badge.run { background: var(--accent-soft); color: var(--accent); } .badge.warn { background: var(--warn-soft); color: var(--warn); }
 .notice { border-radius: var(--radius); padding: 12px 14px; background: var(--warn-soft); color: var(--text); border: 1px solid var(--line); margin-bottom: 18px; }
@@ -106,6 +106,14 @@ tr:hover td { background: var(--surface-2); }
 .progress { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 10px; }
 .progress > div { height: 100%; background: var(--accent); width: 0; transition: width .2s; }
 input.search { width: 260px; }
+
+.capture { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.check-box { margin-top: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px; }
+.check-box ul { margin: 6px 0 0; padding-left: 18px; }
+.check-box.ok { background: var(--ok-soft); } .check-box.attention { background: var(--warn-soft); }
+.check-box.critique { background: var(--err-soft); }
+.thumbs-row { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; }
+.thumbs-row img { height: 64px; border-radius: 4px; }
 
 /* ---------- formulaires */
 input[type=text], input[type=number], select { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
@@ -169,6 +177,34 @@ details.adv summary { cursor: pointer; color: var(--muted); font-weight: 600; ma
 .md blockquote p { margin: 0; }
 .md table { margin: 12px 0; font-size: 13px; }
 .md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+
+/* ---------- graphique débit–distorsion (palette de référence dataviz, 3 rôles max) */
+.viz { --series-1: #2a78d6; --series-2: #eb6834; --ink-muted: #898781; --grid: #e1e0d9; --base: #c3c2b7;
+  --ink-2: #52514e; --plot: var(--surface); position: relative; }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz { --series-1: #3987e5; --series-2: #d95926; --grid: #2c2c2a; --base: #383835; --ink-2: #c3c2b7; }
+}
+:root[data-theme="dark"] .viz { --series-1: #3987e5; --series-2: #d95926; --grid: #2c2c2a; --base: #383835; --ink-2: #c3c2b7; }
+.viz svg { width: 100%; height: auto; display: block; }
+.viz .grid { stroke: var(--grid); stroke-width: 1; }
+.viz .axis { stroke: var(--base); stroke-width: 1; }
+.viz .thr { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.viz .tick { fill: var(--ink-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.viz .axt { fill: var(--ink-2); font-size: 12px; }
+.viz .lab { fill: var(--text); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--plot); stroke-width: 3px; }
+.viz .front { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; opacity: .55; }
+.viz .pt { stroke: var(--plot); stroke-width: 2; cursor: pointer; }
+.viz .pt.pa { fill: var(--series-1); }
+.viz .pt.hi { fill: var(--series-2); }
+.viz .pt.mu { fill: var(--ink-muted); opacity: .55; }
+.viz .pt:hover { stroke: var(--text); }
+.viz .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink-2); margin-top: 4px; }
+.viz .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.viz .sw.pa { background: var(--series-1); } .viz .sw.hi { background: var(--series-2); } .viz .sw.mu { background: var(--ink-muted); opacity: .55; }
+.viz .tip { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.15); pointer-events: none; width: 220px; transform: translateY(-100%); }
+.fam-chip.sel { background: var(--accent-soft); color: var(--accent); }
+.btn.small { font-size: 12px; padding: 3px 8px; }
 
 /* ---------- visualiseur */
 .viewer-frame { width: 100%; height: calc(100vh - 150px); min-height: 520px; border: 1px solid var(--line); border-radius: var(--radius); background: #000; }

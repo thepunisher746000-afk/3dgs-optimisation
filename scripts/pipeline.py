@@ -50,10 +50,11 @@ def gz_size(path):
         return len(gzip.compress(f.read(), 6))
 
 
-def run_config(g0, cfg, out_dir, ref_size, do_gzip, cams_cache):
-    g, t0, info = g0, time.time(), {"config": cfg["name"]}
+def apply_steps(g, steps, cams_cache=None):
+    """Applique les étapes de traitement d'une configuration. Retourne (nuage, exports, options gsq)."""
+    cams_cache = {} if cams_cache is None else cams_cache
     exports, gsq_opts = ["ply"], {}
-    for st in cfg["steps"]:
+    for st in steps:
         (kind, prm), = st.items()
         if kind == "clean":
             prm = dict(prm)
@@ -61,7 +62,11 @@ def run_config(g0, cfg, out_dir, ref_size, do_gzip, cams_cache):
             g, _ = C.clean(g, **{**preset, **prm}, verbose=False)
         elif kind == "prune":
             g = g.subset(C.mask_finite(g))
-            if prm.get("cameras") or prm.get("orbit"):
+            if prm.get("cameras") == "scene":  # poses réelles fournies par l'appelant (benchmark : hors vues de test)
+                if "scene" not in cams_cache:
+                    raise ValueError("cameras « scene » : aucune pose réelle disponible pour cette scène")
+                score = P.importance_views(g, cams_cache["scene"], occlusion=prm.get("occlusion", False))
+            elif prm.get("cameras") or prm.get("orbit"):
                 key = (prm.get("cameras"), prm.get("orbit"))
                 if key not in cams_cache:
                     cams_cache[key] = (P.load_cameras(prm["cameras"]) if prm.get("cameras")
@@ -69,7 +74,9 @@ def run_config(g0, cfg, out_dir, ref_size, do_gzip, cams_cache):
                 score = P.importance_views(g, cams_cache[key], occlusion=prm.get("occlusion", False))
             else:
                 score = P.importance_proxy(g, prm.get("beta", 0.1))
-            g = g.subset(P.select(score, prm.get("keep_ratio"), prm.get("min_score")))
+            keep = P.select(score, prm.get("keep_ratio"), prm.get("min_score"), xyz=g.xyz,
+                            min_coverage=prm.get("min_coverage", 0.25))
+            g = P.compensate(g, keep, score) if prm.get("compensate") else g.subset(keep)
         elif kind == "sh":
             if "degree" in prm:
                 g = S.truncate_sh(g, prm["degree"])
@@ -81,6 +88,12 @@ def run_config(g0, cfg, out_dir, ref_size, do_gzip, cams_cache):
             gsq_opts = prm
         else:
             raise ValueError(f"étape inconnue : {kind}")
+    return g, exports, gsq_opts
+
+
+def run_config(g0, cfg, out_dir, ref_size, do_gzip, cams_cache):
+    t0, info = time.time(), {"config": cfg["name"]}
+    g, exports, gsq_opts = apply_steps(g0, cfg["steps"], cams_cache)
     info["process_s"] = round(time.time() - t0, 2)
     info["n_gaussians"] = len(g)
     info["n_ratio"] = round(len(g) / len(g0), 4)

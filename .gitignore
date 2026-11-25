@@ -2,5 +2,7 @@ data/
 results/**/*.ply
 results/**/*.splat
 results/**/*.gsq
+results/**/benchmark*/img/
+results/**/*.log
 __pycache__/
 *.pyc

@@ -97,6 +97,116 @@ Deux références possibles :
 | C5 | C3b + GSQ (VQ des SH) | quantification quasi sans perte ? |
 | C6 / C7 | élagage 50 % / 35 % + compression | jusqu'où peut-on aller ? |
 
+## 4.3bis Benchmark automatique des algorithmes (`scripts/benchmark.py`, onglet Benchmark)
+
+Le visualiseur web mesure ce que voit l'utilisateur, mais ses temps dépendent du navigateur : un onglet
+caché suspend le rendu. Pour **classer les algorithmes** de façon reproductible, le benchmark rend
+chaque variante avec un **rasteriseur de référence sur CPU** (`scripts/render.py`). Il reproduit le
+rasteriseur de 3DGS : projection EWA, harmoniques sphériques jusqu'au degré 3, et composition alpha exacte
+par tri des fragments (pixel, profondeur).
+
+Protocole :
+1. **Référence** : la scène d'entrée après nettoyage moyen. Les floaters y sont considérés comme des erreurs.
+2. **Variantes** (`configs/benchmark.json`, 25 variantes en 7 familles) : référence, nettoyage, élagage,
+   couleurs SH, quantification, combinaisons, formats existants. Chaque variante est traitée, **exportée
+   puis relue**, donc la perte de compression est comptée.
+3. **Vues de test distinctes des caméras du score d'élagage** : plus proches, décalées en azimut, sur deux
+   hauteurs. Sinon le score « views » serait évalué sur les vues qu'il a optimisées : c'est le même principe
+   que la séparation apprentissage / test.
+4. **Mesures** : taille, facteur de compression, PSNR et SSIM moyens et sur la pire vue, et **surdessin**
+   (fragments composés par pixel). Le surdessin est un indicateur du coût d'affichage indépendant du GPU :
+   chaque fragment est un mélange alpha que la carte graphique doit faire.
+5. **Analyse** :
+   - front de **Pareto** taille/qualité (variantes qu'aucune autre ne bat à la fois en taille et en qualité) ;
+   - plus petit fichier à PSNR ≥ 35 dB (« invisible ») et ≥ 30 dB (« acceptable ») ;
+   - pour chaque famille, l'**efficacité** = dB perdus chaque fois que la taille est divisée par 2.
+     Plus c'est bas, plus l'algorithme est « rentable ».
+
+Formats existants : `.splat` (antimatter15) est intégré. Les formats PlayCanvas (compressed.ply, SOG) sont
+mesurés via `splat-transform` s'il est installé (`npm install -g @playcanvas/splat-transform`) ; sinon ces
+variantes sont marquées « ignorées ».
+
+**Comparaison avec les méthodes publiées** : l'onglet Benchmark reprend le tableau 1 de HAC
+([Chen et al., arXiv:2403.14530](https://arxiv.org/abs/2403.14530)), soit 3DGS, LightGaussian,
+Compact 3DGS, Compressed3D, EAGLES, Self-Organizing Gaussians, Compact3D et HAC, sur Mip-NeRF360 et
+Tanks & Temples. Ces méthodes **ré-entraînent** le modèle et sont évaluées contre les photos réelles, alors
+que nos variantes sont des post-traitements évalués contre le modèle de départ. Les facteurs de
+compression se comparent ; les PSNR non. Pour une comparaison directe, il faut lancer notre benchmark sur
+un modèle 3DGS pré-entraîné d'une de ces scènes.
+
+### Résultats du benchmark sur la scène de test (300 000 gaussiennes, 6 vues 400×300, 14 min)
+
+| Famille | Variante | Taille | ÷ entrée (71 Mo) | PSNR moy. (pire vue) | Surdessin |
+|---|---|---|---|---|---|
+| Référence | original (floaters, halo) | 67,5 Mo | 1,1 | 9,4 dB (8,8) | 209,5 |
+| Référence | nettoyage moyen | 60,8 Mo | 1,2 | référence | 30,2 |
+| Élagage | proxy 75 % | 45,6 Mo | 1,6 | 31,2 dB (30,6) | 25,1 |
+| Élagage | views + occultation 75 % | 45,6 Mo | 1,6 | **38,4 dB** (35,7) | 25,4 |
+| Élagage | views 50 % / + compensation | 30,4 Mo | 2,3 | 32,7 → **34,1 dB** | 23,0 |
+| Élagage | views 35 % / + compensation | 21,3 Mo | 3,3 | 28,2 → **31,3 dB** | 21,0 |
+| Couleurs | SH degré 1 / degré 0 | 23,7 / 14,4 Mo | 3,0 / 4,9 | 48,4 / 41,0 dB | 30,2 |
+| Quantification | GSQ 8 bits / VQ / VQ compact | 8,0 / 3,5 / 2,5 Mo | 8,8 / 20,3 / **28,1** | ≥ 50 / 45,1 / 44,0 dB | 30,2 |
+| Combinaison | views 75 % + compensation + GSQ | 2,3 Mo | **30,4** | 38,1 dB (36,8) | 25,4 |
+| Combinaison | views 35 % + compensation + GSQ | 1,1 Mo | **64,6** | 31,1 dB (29,3) | 21,0 |
+| Format existant | .splat (antimatter15) | 8,2 Mo | 8,6 | 41,0 dB | 30,2 |
+
+Les formats PlayCanvas ont été ignorés : splat-transform n'était pas installé.
+
+**Ce qu'on en tire :**
+1. **La quantification est de loin la plus rentable** : ×28 sur la taille pour 44 dB, perte invisible.
+   C'est elle qui fait l'essentiel de la compression. Elle bat aussi le format `.splat` existant à taille
+   égale : 8 Mo à ≥ 50 dB pour GSQ 8 bits, contre 8,2 Mo à 41 dB pour `.splat`, qui perd les reflets.
+2. **Les SH se réduisent presque gratuitement** jusqu'au degré 1 (×3, 48 dB) sur une scène peu brillante.
+3. **L'élagage est la famille la moins rentable en taille** : environ 9,5 dB perdus chaque fois que la taille
+   est divisée par 2. Il sert surtout à la fluidité. Le score views + occultation est nettement meilleur que
+   le proxy (+7 dB à 75 %), et la compensation ajoute +1,5 à +3 dB.
+4. **Le nettoyage divise le coût d'affichage par 7** (210 → 30 fragments/pixel). C'est l'étape qui rend le
+   modèle fluide, et elle est quasi gratuite.
+5. **Meilleurs compromis** (front de Pareto) : GSQ 8 bits, GSQ VQ, puis views 75 % + GSQ (2,3 Mo, 38 dB),
+   views 50 % + SH1 + GSQ (1,4 Mo, 34 dB) et views 35 % + GSQ (1,1 Mo, 31 dB).
+
+À refaire sur les captures réelles, dont la redondance diffère. Comparés aux méthodes publiées sur
+Mip-NeRF360 (÷15 à ÷49 par rapport à 3DGS d'après le tableau 1 de HAC), les facteurs obtenus ici sans
+ré-entraînement sont du même ordre ; la qualité n'est pas comparable directement (cf. ci-dessus).
+
+### Résultats sur une vraie capture : salle A014
+
+Modèle : 165 photos (Nothing Phone 2a, 14 mm), 159 gardées après vérification, 80 placées par COLMAP
+(sur CPU). Entraînement nerfstudio splatfacto de 7 000 itérations (GTX 1650 Ti, environ 40 min au total) :
+517 513 gaussiennes, 122 Mo. Rendu depuis les poses des photos : 22 à 27 dB **par rapport aux photos réelles**.
+
+Benchmark (suite `configs/benchmark_reel.json`) :
+- 6 vues de test = vraies photos ; ces poses sont exclues du score d'élagage ;
+- référence = le modèle original, car une vraie capture n'a pas de version « sans défauts » ;
+- familles appliquées après un nettoyage léger.
+
+| Famille | Variante | Taille | ÷ original | PSNR moy. (pire vue) |
+|---|---|---|---|---|
+| Nettoyage | moyen / agressif | 103 / 90 Mo | 1,2 / 1,4 | 35,4 (27,1) / 24,7 (17,7) |
+| Élagage | proxy 75 % / views 75 % | 87 Mo | 1,4 | 32,4 (26,4) / **36,1 (30,6)** |
+| Élagage | views 50 % / + compensation | 58 Mo | 2,1 | 29,0 → 31,2 (27,0) |
+| Couleurs | SH 2 / 1 / 0 | 75 / 45 / 28 Mo | 1,6 / 2,7 / 4,4 | 39,3 / 34,4 / 31,8 |
+| Quantification | GSQ 8 bits / VQ / VQ compact | 23 / 8,6 / **7,1 Mo** | 5,3 / 14,3 / **17,2** | ≥ 50 / 41,4 / **39,4 (38,1)** |
+| Combinaison | views 75 % + compensation + GSQ | 6,5 Mo | 18,8 | 35,9 (30,9) |
+| Format existant | .splat | 15,8 Mo | 7,8 | 31,6 |
+
+**Ce que la vraie scène change par rapport à la scène de test :**
+1. **Le nettoyage « moyen » est néfaste** : 27 dB sur la pire vue. Sur un modèle nerfstudio, les grandes
+   gaussiennes semi-transparentes forment les murs et le plafond blancs, pas des floaters. Le nettoyage ne
+   réduit le surdessin que de 20 % (54 → 45). Sur une vraie capture, s'en tenir au nettoyage **léger** et
+   retoucher les vrais floaters à la main (SuperSplat), ou recalibrer les seuils par scène.
+2. **L'élagage coûte plus cher** : 36 dB à 75 % (30,6 dB sur la pire vue), contre 38 dB sur la scène de
+   test. Le modèle court (7 000 itérations) est peu redondant. Le score views + occultation reste nettement
+   meilleur que le proxy (+3,7 dB), et la compensation ajoute environ 2 dB.
+3. **Les reflets (SH) comptent** : le degré 1 perd 15 dB de marge (34,4 dB, contre 48 sur la scène de test).
+   Le format `.splat`, qui supprime les SH, plafonne donc à 31,6 dB.
+4. **La quantification reste la méthode reine** : ÷17 à 39,4 dB sans toucher au nombre de gaussiennes.
+   C'est le meilleur compromis à qualité quasi invisible (7,1 Mo au lieu de 122 Mo).
+
+Recommandation pour cette scène : **GSQ VQ compact seul** (7,1 Mo, ÷17, 39 dB) si la qualité prime ;
+**élagage views 75 % + compensation + GSQ** (6,5 Mo, ÷19, 36 dB) si la fluidité compte aussi (−5 % de
+surdessin seulement, gain faible ici).
+
 ## 4.4 Premiers résultats (scène synthétique de validation)
 
 Scène générée par `scripts/make_synthetic.py` (200 000 gaussiennes, degré SH 3) dont on connaît la

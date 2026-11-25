@@ -80,7 +80,49 @@ images/ ──COLMAP──► sparse/0 (cameras, images, points3D)
 sparse/0 ──3DGS / gsplat / Brush──► point_cloud.ply  (+ cameras.json)
 ```
 
-## 2.5 Contrôle qualité du modèle généré
+## 2.5 Import dans le portail (détection automatique du format)
+
+L'onglet **Modèles** accepte tout ce qui sort d'une capture. Le type est détecté d'après le **contenu**
+du fichier (`scripts/formats.py`), pas d'après son extension :
+
+| Détecté | Comment | Rangé dans | Étape suivante |
+|---|---|---|---|
+| Modèle 3DGS PLY | propriétés `opacity`, `scale_*`, `rot_*`, `f_dc_*` | `data/` | Analyser → Optimiser |
+| PLY compressé PlayCanvas, SOG, SPZ, ksplat | élément `chunk`, archive SOG, en-tête gzip `NGSP` | `data/` | Convertir en PLY (splat-transform) |
+| .splat, GSQ | taille multiple de 32 / signature `GSQ1` | `data/` | Optimiser |
+| Vidéo (MP4, MOV, AVI, MKV, WebM) | boîte `ftyp`, EBML, RIFF ; durée et résolution lues par OpenCV | `data/captures/<nom>/` | Extraire les images |
+| Photos (JPEG, PNG, HEIC, TIFF, WebP) ou ZIP de photos | signatures d'image | `data/captures/<groupe>/images/` | Générer le modèle |
+| Nuage de points, maillage | PLY sans attributs de gaussienne / avec `face` | refusé à l'optimisation | — |
+
+**Vérifier la capture avant d'entraîner** (`scripts/check_capture.py`, bouton « Vérifier la capture ») :
+nombre d'images, netteté, variations d'exposition, focale (EXIF) et surtout **recouvrement**. Le script
+apparie des points ORB entre paires d'images et les filtre par RANSAC sur la matrice fondamentale. Deux
+vues sont « liées » au-delà de 50 correspondances fiables, et le graphe des liens doit former un seul
+groupe dense. Le verdict (exploitable / limite / insuffisante) et les actions à mener s'affichent sur la
+capture.
+
+Premier cas réel, salle TAI A009 : 6 photos grand-angle de 4096×3072 px, nettes, toutes reliées en un
+groupe (7 paires liées sur 15). Verdict « insuffisante » : 6 vues, c'est 20 à 50 fois moins que ce
+qu'exige le 3DGS. Les EXIF avaient été supprimés lors du transfert, donc la focale est inconnue.
+
+Deuxième cas réel, salle A014 : 165 photos (Nothing Phone 2a, 14 mm équivalent, 4080×3072 px).
+L'échantillonnage des paires (2 836 sur 13 530) donnait 6 groupes. La seconde passe teste toutes les
+paires entre groupes différents (6 668 de plus) : il reste **un groupe principal de 152 photos (92 %)**,
+plus un groupe de 10 (angle de l'armoire, pris avec de grands écarts), une paire et une photo isolée.
+Verdict « limite », capture utilisable. Le dossier `postshot_input/` écarte les 5 photos floues et la
+photo isolée : 159 images. Leçon : ne jamais conclure à une coupure sur un échantillon de paires.
+
+**Vidéo → modèle** : « Extraire les images » lance `extract_frames.py` (meilleure netteté par fenêtre,
+cf. 2.3). « Générer le modèle » lance `train_3dgs.py`, qui utilise l'outil d'entraînement installé :
+nerfstudio (splatfacto), ou COLMAP + OpenSplat. Sans outil local, le script indique la marche à suivre :
+PostShot avec la vidéo ou les images, Polycam avec l'« Archive ZIP des photos », ou Brush. On importe
+ensuite le .ply obtenu.
+
+⚠️ `train_3dgs.py` n'a pas pu être testé dans l'environnement de développement : aucun outil
+d'entraînement n'y est installé (machine de développement : GTX 1650 Ti, 4 Go de VRAM, sous les 8 Go
+recommandés par le sujet).
+
+## 2.6 Contrôle qualité du modèle généré
 
 1. `python3 scripts/analyze.py scene.ply --plot data/sceneA/histos.png` : nombre de gaussiennes, part des
    SH, distributions d'opacité / taille / distance, nombre de candidats au nettoyage ;

@@ -1,0 +1,60 @@
+[
+  {
+    "config": "A014_R1_gsq_compact",
+    "process_s": 0.25,
+    "n_gaussians": 517513,
+    "n_ratio": 1.0,
+    "sh_degree": 3,
+    "gsq_pos_rmse_rel_extent": 3.233e-05,
+    "gsq_pos_max_rel_extent": 0.0006631,
+    "gsq_rot_mean_deg": 0.08054,
+    "gsq_rot_p99_deg": 0.148,
+    "gsq_logscale_rmse": 0.006427,
+    "gsq_rgb_rmse_255": 0.5238,
+    "gsq_alpha_rmse_255": 0.2887,
+    "gsq_sh_rmse": 0.01201,
+    "gsq_sh_rms_ref": 0.02306,
+    "gsq_bytes": 7460942,
+    "gsq_ratio": 17.2,
+    "gsq_B_per_g": 14.42
+  },
+  {
+    "config": "A014_R2_elague75_gsq",
+    "process_s": 12.25,
+    "n_gaussians": 388135,
+    "n_ratio": 0.75,
+    "sh_degree": 3,
+    "gsq_pos_rmse_rel_extent": 7.659e-07,
+    "gsq_pos_max_rel_extent": 1.179e-05,
+    "gsq_rot_mean_deg": 0.08049,
+    "gsq_rot_p99_deg": 0.148,
+    "gsq_logscale_rmse": 0.005872,
+    "gsq_rgb_rmse_255": 0.5436,
+    "gsq_alpha_rmse_255": 0.3056,
+    "gsq_sh_rmse": 0.009615,
+    "gsq_sh_rms_ref": 0.02191,
+    "gsq_bytes": 6813144,
+    "gsq_ratio": 18.84,
+    "gsq_B_per_g": 17.55
+  },
+  {
+    "config": "A014_R3_elague75",
+    "process_s": 13.63,
+    "n_gaussians": 388135,
+    "n_ratio": 0.75,
+    "sh_degree": 3,
+    "ply_bytes": 91601337,
+    "ply_ratio": 1.4,
+    "ply_B_per_g": 236.0
+  },
+  {
+    "config": "A014_R4_splat",
+    "process_s": 0.16,
+    "n_gaussians": 517513,
+    "n_ratio": 1.0,
+    "sh_degree": 3,
+    "splat_bytes": 16560416,
+    "splat_ratio": 7.75,
+    "splat_B_per_g": 32.0
+  }
+]

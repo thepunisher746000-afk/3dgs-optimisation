@@ -1,0 +1,11 @@
+[
+  {"name": "A014_R1_gsq_compact",      "steps": [{"clean": {"preset": "light"}}, {"export": ["gsq"]},
+                                                 {"gsq": {"sh": "vq", "codebook": 1024, "pos": "11-10-11", "sh_zero": 0.05}}]},
+  {"name": "A014_R2_elague75_gsq",     "steps": [{"clean": {"preset": "light"}},
+                                                 {"prune": {"keep_ratio": 0.75, "cameras": "data/scene_A014_cameras.json", "occlusion": true, "compensate": true}},
+                                                 {"export": ["gsq"]}, {"gsq": {"sh": "vq", "codebook": 4096}}]},
+  {"name": "A014_R3_elague75",         "steps": [{"clean": {"preset": "light"}},
+                                                 {"prune": {"keep_ratio": 0.75, "cameras": "data/scene_A014_cameras.json", "occlusion": true, "compensate": true}},
+                                                 {"export": ["ply"]}]},
+  {"name": "A014_R4_splat",            "steps": [{"clean": {"preset": "light"}}, {"export": ["splat"]}]}
+]

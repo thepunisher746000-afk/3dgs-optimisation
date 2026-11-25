@@ -10,13 +10,16 @@
    recouvrement, couvrir tout ce qui doit être vu.
 2. **Limiter le nombre de gaussiennes dès l'entraînement** (profil MCMC / nombre max de splats) quand la
    cible est le web ou le mobile.
-3. **Toujours nettoyer** : NaN, α < 1/255, gaussiennes géantes, floaters (peu opaques ET grosses), halo lointain.
-   C'est sans perte visible et c'est ce qui a le plus d'effet sur la fluidité.
+3. **Nettoyer avec prudence** : NaN et α < 1/255 toujours (sans risque). Les filtres « géantes / floaters /
+   halo » sont très efficaces quand le modèle a de vrais floaters (scène de test : coût d'affichage ÷7). En
+   revanche, sur un modèle nerfstudio d'intérieur (salle A014), ils suppriment des morceaux de murs
+   (27 dB sur la pire vue). **Toujours vérifier en rendu ou dans le visualiseur avant de garder un nettoyage.**
 4. **Élaguer avec un score d'importance**, en cherchant le « coude » qualité/taille (souvent entre 30 et
    60 % de gaussiennes conservées ⟨à confirmer⟩). Avec les poses caméras, préférer le score « views ».
 5. **Réduire les SH** selon la scène : degré 0–1 pour une scène mate, garder 2–3 pour les matériaux brillants.
-6. **Quantifier** (positions 16 bits relatives à des blocs triés Morton, rotation 32 bits, couleurs 8 bits,
-   SH par quantification vectorielle) : ×10 à ×16 quasi sans perte.
+6. **Quantifier en premier** (positions 16 bits relatives à des blocs triés Morton, rotation 32 bits, couleurs
+   8 bits, SH par quantification vectorielle) : c'est la méthode la plus rentable sur les deux scènes
+   mesurées. Salle A014 : ÷17 à 39 dB ; scène de test : ÷28 à 44 dB.
 7. **Diffuser dans un format compressé reconnu** (compressed.ply / SOG / SPZ / ksplat selon le
    visualiseur), servi avec compression HTTP et cache.
 8. **Mesurer** : taille, temps de chargement, FPS (moyen et 1 % low) sur l'appareil cible, PSNR/SSIM

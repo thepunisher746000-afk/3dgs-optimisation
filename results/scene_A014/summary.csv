@@ -1,0 +1,5 @@
+config,gsq_B_per_g,gsq_alpha_rmse_255,gsq_bytes,gsq_logscale_rmse,gsq_pos_max_rel_extent,gsq_pos_rmse_rel_extent,gsq_ratio,gsq_rgb_rmse_255,gsq_rot_mean_deg,gsq_rot_p99_deg,gsq_sh_rms_ref,gsq_sh_rmse,n_gaussians,n_ratio,ply_B_per_g,ply_bytes,ply_ratio,process_s,sh_degree,splat_B_per_g,splat_bytes,splat_ratio
+A014_R1_gsq_compact,14.42,0.2887,7460942,0.006427,0.0006631,3.233e-05,17.2,0.5238,0.08054,0.148,0.02306,0.01201,517513,1.0,,,,0.25,3,,,
+A014_R2_elague75_gsq,17.55,0.3056,6813144,0.005872,1.179e-05,7.659e-07,18.84,0.5436,0.08049,0.148,0.02191,0.009615,388135,0.75,,,,12.25,3,,,
+A014_R3_elague75,,,,,,,,,,,,,388135,0.75,236.0,91601337,1.4,13.63,3,,,
+A014_R4_splat,,,,,,,,,,,,,517513,1.0,,,,0.16,3,32.0,16560416,7.75

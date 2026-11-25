@@ -155,6 +155,70 @@ Biais connu : le poids $1/z^2$ favorise les zones proches des caméras ; si les 
 des points de vue réels d'utilisation, des zones lointaines peuvent être vidées (observé sur une scène sans
 redondance). Utiliser de préférence les **poses réelles** d'acquisition.
 
+### B2bis — Éviter les trous : trois corrections (v0.2)
+
+Premier constat : le score views gardait *plus* de gaussiennes de la sphère que le proxy (97 % contre 86 %), mais il en
+gardait **2 %** dans la zone la plus touchée, contre 67 % pour le proxy. Le proxy élague un peu partout, le score
+views élaguait par plaques, ce qui fait des trous. Les trois causes et leurs corrections :
+
+1. **Caméras virtuelles mal cadrées.** Images 16:9 trop proches, donc un champ vertical de ±18° seulement : le haut des
+   objets sortait du cadre, avait un score nul et partait en bloc. Correction : image carrée, distance
+   $r = R / \sin(\text{fov}/2)$ pour que la sphère englobante robuste ($R$ = quantile 95 %) tienne dans le
+   champ, trois anneaux d'élévation (10°, 35°, 60°).
+2. **Occultation trop stricte sur les zones vues de biais.** Une cellule de 8 px y couvre une grande plage de
+   profondeur : des gaussiennes visibles étaient déclarées cachées. Correction : marge adaptative
+   $z \le z_\text{buffer} + \max(\Delta z_\text{voisines},\, 2\sigma_{max}) + 0{,}002\,z$, où
+   $\Delta z_\text{voisines}$ est l'écart de profondeur maximal avec les 8 cellules voisines (grand sur les
+   bords et les surfaces rasantes, petit au milieu d'une surface de face).
+3. **Sélection globale sans garde-fou.** Correction : sélection **stratifiée** (`--min-coverage f`, défaut 0,25).
+   L'espace est découpé en voxels d'environ 32 gaussiennes. Chaque voxel garde d'office la fraction $f$ de ses
+   gaussiennes utiles (score > 0), les meilleures. Le reste du budget va aux meilleurs scores globaux. Le
+   nombre total gardé ne change pas, mais aucune zone visible ne peut perdre plus de $1-f$ de ses gaussiennes.
+   Les gaussiennes de score nul (cachées) ne sont jamais protégées.
+
+Résultat sur la scène test (270 k gaussiennes après nettoyage, 75 % gardées) :
+
+| Variante | Sphère gardée | Pire zone de la sphère | Gaussiennes cachées gardées |
+|---|---|---|---|
+| proxy | 86 % | 67 % | 89 % |
+| views + occultation, v0.1 | 97 % | 2 % | 28 % (scène 200 k) |
+| views + occultation, v0.2 (3 corrections) | 97 % | 24 % | **8 %** |
+
+Les seules zones encore vidées sont réellement cachées : sol sous le cube, face du cube posée au sol. Le
+budget d'élagage est donc dépensé sur l'invisible avant de toucher au visible.
+
+### B2ter — Compensation : ne pas laisser de « trous de transparence » (v0.3)
+
+À fort élagage (35 % gardées), même sans zone vidée, la surface devient **tachetée**. Le diagnostic montre
+que la couverture géométrique reste suffisante (5 à 8 couches d'ellipses à 2σ sur la sphère et le sol).
+En revanche, l'**opacité cumulée** chute : on voit à travers la surface. Retirer une gaussienne sans rien
+changer aux autres retire de la matière. La compensation la redistribue (`prune.py --compensate`) :
+
+1. chaque gaussienne **visible** supprimée (score > 0) est rattachée à la gardée la plus proche (k-d tree),
+   si elle est dans son voisinage (distance ≤ 3 σ_max de la gardée) ;
+2. sa « masse » $m_j = \alpha_j\,\sigma_{a,j}\,\sigma_{b,j}$ s'ajoute à celle de la gardée ;
+3. la gardée absorbe d'abord par l'**opacité**, qui ne floute pas :
+   $\alpha_i' = \min(0{,}99,\ \alpha_i\,(m_i + M_i)/m_i)$ ;
+4. si l'opacité plafonne, le reste **agrandit** ses deux plus grands axes, d'un facteur ≤ 1,6 ;
+5. sa couleur (DC et SH) devient la moyenne pondérée par les masses.
+
+Les gaussiennes cachées (score nul) ne sont jamais compensées, sinon on recréerait de la matière invisible.
+C'est une version simplifiée de la fusion de gaussiennes, sans ré-entraînement.
+
+Mesure : rendu CPU de référence (`scripts/render.py`), 4 vues de test distinctes des caméras du score,
+PSNR et SSIM par rapport au modèle nettoyé.
+
+| Gardées | proxy | proxy + compensation | views + occultation | views + occultation + compensation |
+|---|---|---|---|---|
+| 50 % | 24,7 dB / 0,807 | 29,7 dB / 0,937 | 32,7 dB / 0,952 | **33,8 dB / 0,963** |
+| 35 % | 22,3 dB / 0,708 | 28,1 dB / 0,904 | 27,9 dB / 0,887 | **30,3 dB / 0,933** |
+| 20 % | 21,7 dB / 0,695 | 28,1 dB / 0,902 | 21,2 dB / 0,724 | **27,5 dB / 0,894** |
+
+La compensation apporte +1 à +6 dB, d'autant plus que l'élagage est fort. À 20 %, le proxy compensé fait
+même un peu mieux que le score views compensé (28,1 contre 27,5 dB). L'élagage touche alors forcément du
+visible : le choix du score compte moins que la compensation. Il reste aussi des imperfections de surface
+que seul un ré-entraînement (B3) peut corriger.
+
 ### B3 — Ré-entraînement court (hors scripts, optionnel)
 Après un élagage fort (ρ < 0,4), un fine-tuning de quelques milliers d'itérations avec les images
 d'origine (gsplat, Nerfstudio) permet aux gaussiennes restantes de combler les trous. C'est ce qui permet à

@@ -24,7 +24,11 @@ from urllib.parse import parse_qs, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 REAL_ROOT = os.path.realpath(ROOT)
-MODEL_EXT = (".ply", ".splat", ".gsq", ".ksplat", ".spz")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import formats  # noqa: E402  (détection des formats, scripts/formats.py)
+
+MODEL_EXT = formats.MODEL_EXT
+CAPTURES = os.path.join(ROOT, "data", "captures")
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 
@@ -45,44 +49,85 @@ def safe_path(relpath, must_exist=True, roots=None):
     return p
 
 
-def gaussian_count(path):
-    """Nombre de gaussiennes lu sans charger le fichier."""
+def safe_detect(p):
     try:
-        if path.endswith(".splat"):
-            return os.path.getsize(path) // 32
-        with open(path, "rb") as f:
-            head = f.read(65536)
-        if path.endswith(".gsq"):
-            n = struct.unpack("<I", head[4:8])[0]
-            return json.loads(head[8:8 + n])["n"]
-        if path.endswith(".ply"):
-            m = re.search(rb"element vertex (\d+)", head)
-            return int(m.group(1)) if m else None
-    except Exception:
-        return None
-    return None
-
-
-def model_kind(name):
-    n = name.lower()
-    if n.endswith(".gsq.ply"):
-        return "gsq décodé"
-    return n.rsplit(".", 1)[-1]
+        return formats.detect(p)
+    except Exception as e:
+        return {"kind": "unknown", "label": f"illisible ({e})", "category": "unknown", "details": {}}
 
 
 def list_models():
+    """Modèles 3DGS de data/ et results/ (hors captures et sorties de benchmark), avec type détecté."""
     out = []
     for base in ("data", "results"):
-        for dp, _, files in os.walk(os.path.join(ROOT, base)):
+        for dp, dirs, files in os.walk(os.path.join(ROOT, base)):
+            dirs[:] = [d for d in dirs if d not in ("captures", "benchmark")]
             for f in files:
                 if f.lower().endswith(MODEL_EXT):
                     p = os.path.join(dp, f)
                     st = os.stat(p)
-                    out.append({"path": rel(p), "name": f, "dir": rel(dp), "size": st.st_size,
-                                "mtime": st.st_mtime, "kind": model_kind(f), "count": gaussian_count(p),
-                                "viewable": not f.lower().endswith(".gsq")})
+                    d = safe_detect(p)
+                    short = {"gaussians": "PLY 3DGS", "gaussians_compressed": "PLY compressé", "splat": ".splat",
+                             "ksplat": ".ksplat", "spz": "SPZ", "sog": "SOG", "gsq": "GSQ", "pointcloud": "nuage de points",
+                             "mesh": "maillage"}.get(d["kind"], d["label"])
+                    kind = "GSQ décodé" if f.lower().endswith(".gsq.ply") else short
+                    out.append({"path": rel(p), "name": f, "dir": rel(dp), "size": st.st_size, "mtime": st.st_mtime,
+                                "kind": kind, "type": d["kind"], "category": d["category"],
+                                "count": d["details"].get("n"),
+                                "usable": d["kind"] in ("gaussians", "splat", "gsq"),
+                                "viewable": d["kind"] in ("gaussians", "splat", "ksplat", "spz")})
     out.sort(key=lambda m: -m["mtime"])
     return out
+
+
+def list_captures():
+    """Captures (vidéos, photos) de data/captures/<nom>/ et leur état d'avancement vers un modèle."""
+    out = []
+    if not os.path.isdir(CAPTURES):
+        return out
+    for name in sorted(os.listdir(CAPTURES)):
+        d = os.path.join(CAPTURES, name)
+        if not os.path.isdir(d):
+            continue
+        videos = []
+        for f in sorted(os.listdir(d)):
+            if f.lower().endswith(formats.VIDEO_EXT):
+                det = safe_detect(os.path.join(d, f))
+                videos.append({"name": f, "path": rel(os.path.join(d, f)), "size": os.path.getsize(os.path.join(d, f)),
+                               **det["details"]})
+        img_dir = os.path.join(d, "images")
+        images = sorted(f for f in os.listdir(img_dir) if f.lower().endswith(formats.IMAGE_EXT)) if os.path.isdir(img_dir) else []
+        zip_path = os.path.join(d, f"{name}_images.zip")
+        model = os.path.join(ROOT, "data", f"{name}.ply")
+        check = read_json(os.path.join(d, "check.json"))
+        out.append({"name": name, "dir": rel(d), "videos": videos, "images": len(images),
+                    "check": {k: check.get(k) for k in ("level", "verdict", "issues", "advice", "images", "linked_pairs",
+                                                        "components")} if check else None,
+                    "image_sample": [rel(os.path.join(img_dir, f)) for f in images[:: max(1, len(images) // 6)][:6]],
+                    "zip": rel(zip_path) if os.path.exists(zip_path) else None,
+                    "model": rel(model) if os.path.exists(model) else None,
+                    "mtime": os.path.getmtime(d)})
+    out.sort(key=lambda c: -c["mtime"])
+    return out
+
+
+def tools_status():
+    """Outils externes optionnels détectés (pour activer les actions correspondantes dans l'interface)."""
+    import shutil
+    try:
+        import cv2  # noqa: F401
+        cv = True
+    except ImportError:
+        cv = False
+    try:
+        import scipy  # noqa: F401
+        sp = True
+    except ImportError:
+        sp = False
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    from train_3dgs import available_backends
+    return {"opencv": cv, "scipy": sp, "trainers": available_backends(),
+            "splat_transform": bool(shutil.which("splat-transform"))}
 
 
 def read_json(p):
@@ -112,6 +157,7 @@ def list_results():
                         if f.startswith("bench_") and f.endswith(".json")],
             "files": [{"name": f, "path": rel(os.path.join(p, f)), "size": os.path.getsize(os.path.join(p, f))}
                       for f in files if f.lower().endswith(MODEL_EXT)],
+            "benchmark": read_json(os.path.join(p, "benchmark", "benchmark.json")),
         })
     return scenes
 
@@ -160,9 +206,45 @@ def build_command(tool, p):
         out = "data/synthetic.ply"
         return [S("make_synthetic.py"), out, "--n", str(n)], [out]
 
+    if tool in ("frames", "train", "zip", "check"):
+        cap = p.get("capture") or ""
+        capdir = safe_path(cap, roots=("data",))
+        name = os.path.basename(capdir)
+        if tool == "frames":
+            video = p.get("video") or ""
+            safe_path(video, roots=("data",))
+            fps = num(p, "fps", 3, 0.2, 30)
+            side = num(p, "max_side", 1920, 0, 8000, int)
+            return [S("extract_frames.py"), video, f"{cap}/images", "--fps", f"{fps:g}", "--max-side", str(side)], \
+                   [f"{cap}/images"]
+        if tool == "check":
+            return [S("check_capture.py"), cap], [f"{cap}/check.json"]
+        if tool == "train":
+            it = num(p, "iterations", 7000, 500, 100000, int)
+            return [S("train_3dgs.py"), cap, "--iterations", str(it)], [f"data/{name}.ply"]
+        return ["-m", "zipfile", "-c", f"{cap}/{name}_images.zip", f"{cap}/images"], [f"{cap}/{name}_images.zip"]
+
     inp = p.get("input") or ""
     safe_path(inp, roots=("data", "results"))
     outdir, stem = scene_dir_and_stem(inp)
+    det = safe_detect(os.path.join(ROOT, inp))
+    if tool != "convert" and det["kind"] not in ("gaussians", "splat", "gsq"):
+        raise ValueError(f"{det['label']} : ce fichier ne peut pas être traité directement"
+                         + (" (le convertir d'abord en PLY)" if det["category"] == "model" else ""))
+
+    if tool == "convert":
+        out = f"data/{stem}.ply"
+        return ["-c", "import subprocess,sys; sys.exit(subprocess.call(['splat-transform', sys.argv[1], sys.argv[2]]))",
+                inp, out], [out]
+
+    if tool == "benchmark":
+        suite = p.get("suite", "configs/benchmark.json")
+        safe_path(suite, roots=("configs",))
+        args = [S("benchmark.py"), inp, "--suite", suite, "--views", str(num(p, "views", 6, 1, 32, int)),
+                "--out", f"{outdir}/benchmark"]
+        if p.get("only"):
+            args += ["--only"] + [s for s in p["only"] if re.fullmatch(r"[\w ()éèàç\-]+", s)]
+        return args, [f"{outdir}/benchmark/benchmark.md"]
 
     if tool == "analyze":
         return [S("analyze.py"), inp, "--json", f"{outdir}/analyze.json"], [f"{outdir}/analyze.json"]
@@ -202,6 +284,9 @@ def build_command(tool, p):
             raise ValueError("score inconnu")
         if score != "proxy" and p.get("occlusion", True):
             args += ["--occlusion"]
+        args += ["--min-coverage", f"{num(p, 'min_coverage', 0.25, 0, 1) or 0:g}"]
+        if p.get("compensate", True):
+            args += ["--compensate"]
         return args, [out]
 
     if tool == "sh":
@@ -237,7 +322,68 @@ def build_command(tool, p):
 
 
 TOOL_TITLES = {"synthetic": "Scène de test", "analyze": "Analyse", "clean": "Nettoyage", "prune": "Élagage",
-               "sh": "Réduction SH", "gsq": "Compression GSQ", "pipeline": "Pipeline complet"}
+               "sh": "Réduction SH", "gsq": "Compression GSQ", "pipeline": "Pipeline complet",
+               "frames": "Extraction des images", "train": "Génération du modèle", "zip": "Archive des photos",
+               "check": "Vérification de la capture",
+               "convert": "Conversion en PLY", "benchmark": "Benchmark"}
+
+
+def store_upload(name, rfile, length, group=None):
+    """Enregistre un fichier importé au bon endroit selon son type détecté.
+    Modèle -> data/ ; vidéo -> data/captures/<nom>/ ; photo -> data/captures/<groupe>/images/ ;
+    archive de photos -> extraite dans data/captures/<nom>/images/."""
+    os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
+    tmp = os.path.join(ROOT, "data", f".upload_{uuid.uuid4().hex}")
+    remaining = length
+    with open(tmp, "wb") as f:
+        while remaining > 0:
+            chunk = rfile.read(min(1 << 20, remaining))
+            if not chunk:
+                break
+            f.write(chunk)
+            remaining -= len(chunk)
+    try:
+        det = formats.detect(tmp)
+        stem = formats.safe_stem(name)
+        kind = det["kind"]
+        if det["category"] == "model":
+            dest = os.path.join(ROOT, "data", name)
+            os.replace(tmp, dest)
+        elif kind == "video":
+            d = os.path.join(CAPTURES, stem)
+            os.makedirs(d, exist_ok=True)
+            dest = os.path.join(d, name)
+            os.replace(tmp, dest)
+            det = formats.detect(dest)  # infos vidéo (durée, résolution) une fois le fichier en place
+        elif kind == "image":
+            g = formats.safe_stem(group or "photos")
+            d = os.path.join(CAPTURES, g, "images")
+            os.makedirs(d, exist_ok=True)
+            dest = os.path.join(d, name)
+            os.replace(tmp, dest)
+        elif kind == "image_archive":
+            import zipfile
+            d = os.path.join(CAPTURES, stem, "images")
+            os.makedirs(d, exist_ok=True)
+            n = 0
+            with zipfile.ZipFile(tmp) as z:
+                for info in z.infolist():
+                    base = os.path.basename(info.filename)
+                    if base and not base.startswith(".") and base.lower().endswith(formats.IMAGE_EXT):
+                        with z.open(info) as src, open(os.path.join(d, base), "wb") as out:  # nom aplati : pas de ../
+                            out.write(src.read())
+                        n += 1
+            os.remove(tmp)
+            dest = d
+            det["details"]["extracted"] = n
+        else:
+            os.remove(tmp)
+            raise ValueError(f"{det['label']} : type non pris en charge. Formats acceptés : modèles 3DGS "
+                             "(.ply, .splat, .ksplat, .spz, .sog), vidéos (.mp4, .mov…), photos (.jpg, .png…) ou .zip de photos.")
+        return {"path": rel(dest), "detected": det}
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
 
 
 def start_job(tool, params):
@@ -327,7 +473,14 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(list_docs())
             if u.path == "/api/configs":
                 return self.send_json(sorted("configs/" + f for f in os.listdir(os.path.join(ROOT, "configs"))
-                                             if f.endswith(".json")))
+                                             if f.endswith(".json") and not f.startswith("benchmark")))
+            if u.path == "/api/suites":
+                return self.send_json(sorted("configs/" + f for f in os.listdir(os.path.join(ROOT, "configs"))
+                                             if f.startswith("benchmark") and f.endswith(".json")))
+            if u.path == "/api/captures":
+                return self.send_json(list_captures())
+            if u.path == "/api/tools":
+                return self.send_json(tools_status())
             if u.path == "/api/jobs":
                 with JOBS_LOCK:
                     jobs = sorted(JOBS.values(), key=lambda j: -j["start"])
@@ -354,19 +507,20 @@ class Handler(SimpleHTTPRequestHandler):
 
             if u.path == "/api/upload":
                 name = os.path.basename(q.get("name", [""])[0])
-                if not re.fullmatch(r"[\w.\- ]+", name) or not name.lower().endswith(MODEL_EXT):
-                    raise ValueError("nom de fichier invalide (extensions : .ply .splat .gsq .ksplat .spz)")
-                os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
-                dest = os.path.join(ROOT, "data", name)
-                remaining = int(self.headers.get("Content-Length", 0))
-                with open(dest, "wb") as f:
-                    while remaining > 0:
-                        chunk = self.rfile.read(min(1 << 20, remaining))
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        remaining -= len(chunk)
-                return self.send_json({"path": rel(dest), "size": os.path.getsize(dest)})
+                if not re.fullmatch(r"[\w.\- ()]+", name) or not name.lower().endswith(formats.UPLOAD_EXT):
+                    raise ValueError("Type de fichier non accepté. Formats : modèles 3DGS (.ply .splat .ksplat .spz .sog .gsq), "
+                                     "vidéos (.mp4 .mov .m4v .avi .mkv .webm), photos (.jpg .png .heic .tif .webp) ou .zip de photos.")
+                return self.send_json(store_upload(name, self.rfile, int(self.headers.get("Content-Length", 0)),
+                                                   q.get("group", [None])[0]))
+
+            if u.path == "/api/delete_capture":
+                body = json.loads(self.read_body())
+                p = safe_path(body["path"], roots=("data/captures",))
+                if os.path.dirname(p) != os.path.realpath(CAPTURES):
+                    raise ValueError("seul un dossier de capture entier peut être supprimé")
+                import shutil
+                shutil.rmtree(p)
+                return self.send_json({"deleted": body["path"]})
 
             if u.path == "/api/bench":
                 data = json.loads(self.read_body())

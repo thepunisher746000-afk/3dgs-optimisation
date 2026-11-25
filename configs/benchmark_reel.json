@@ -1,0 +1,459 @@
+{
+ "description": "Suite pour une VRAIE capture : élagage « views » scoré sur les poses réelles des photos (hors vues de test), vues de test = photos réelles. Nécessite data/<scène>_cameras.json (train_3dgs.py). Référence = modèle original ; familles appliquées après un nettoyage léger (le nettoyage moyen retire des murs sur une vraie scène).",
+ "reference_label": "modèle original (une vraie capture n a pas de vérité sans défauts)",
+ "reference": [],
+ "external_tools": {
+  "playcanvas-compressed": {
+   "encode": [
+    "splat-transform",
+    "{in}",
+    "{out}"
+   ],
+   "decode": [
+    "splat-transform",
+    "{out}",
+    "{back}"
+   ],
+   "ext": ".compressed.ply",
+   "install": "npm install -g @playcanvas/splat-transform"
+  },
+  "playcanvas-sog": {
+   "encode": [
+    "splat-transform",
+    "{in}",
+    "{out}"
+   ],
+   "decode": [
+    "splat-transform",
+    "{out}",
+    "{back}"
+   ],
+   "ext": ".sog",
+   "install": "npm install -g @playcanvas/splat-transform"
+  }
+ },
+ "variants": [
+  {
+   "family": "Référence",
+   "name": "original",
+   "format": "ply",
+   "steps": []
+  },
+  {
+   "family": "Nettoyage",
+   "name": "nettoyage_moyen",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "medium"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Nettoyage",
+   "name": "nettoyage_leger",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Nettoyage",
+   "name": "nettoyage_agressif",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "aggressive"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "proxy_75",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.75
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "proxy_50",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.5
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "proxy_35_comp",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.35,
+      "compensate": true
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "views_75",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.75,
+      "occlusion": true,
+      "cameras": "scene"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "views_50",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.5,
+      "occlusion": true,
+      "cameras": "scene"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "views_35",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.35,
+      "occlusion": true,
+      "cameras": "scene"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "views_50_comp",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.5,
+      "occlusion": true,
+      "compensate": true,
+      "cameras": "scene"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "views_35_comp",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.35,
+      "occlusion": true,
+      "compensate": true,
+      "cameras": "scene"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Élagage",
+   "name": "views_20_comp",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.2,
+      "occlusion": true,
+      "compensate": true,
+      "cameras": "scene"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Couleurs (SH)",
+   "name": "sh_2",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "sh": {
+      "degree": 2
+     }
+    }
+   ]
+  },
+  {
+   "family": "Couleurs (SH)",
+   "name": "sh_1",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "sh": {
+      "degree": 1
+     }
+    }
+   ]
+  },
+  {
+   "family": "Couleurs (SH)",
+   "name": "sh_0",
+   "format": "ply",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "sh": {
+      "degree": 0
+     }
+    }
+   ]
+  },
+  {
+   "family": "Quantification",
+   "name": "gsq_vq",
+   "format": "gsq",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ],
+   "options": {
+    "sh": "vq",
+    "codebook": 4096
+   }
+  },
+  {
+   "family": "Quantification",
+   "name": "gsq_8bit",
+   "format": "gsq",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ],
+   "options": {
+    "sh": "8bit"
+   }
+  },
+  {
+   "family": "Quantification",
+   "name": "gsq_vq_compact",
+   "format": "gsq",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ],
+   "options": {
+    "sh": "vq",
+    "codebook": 1024,
+    "pos": "11-10-11",
+    "sh_zero": 0.05
+   }
+  },
+  {
+   "family": "Combinaisons",
+   "name": "views75_gsq",
+   "format": "gsq",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.75,
+      "occlusion": true,
+      "compensate": true,
+      "cameras": "scene"
+     }
+    }
+   ],
+   "options": {
+    "sh": "vq"
+   }
+  },
+  {
+   "family": "Combinaisons",
+   "name": "views50_sh1_gsq",
+   "format": "gsq",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.5,
+      "occlusion": true,
+      "compensate": true,
+      "cameras": "scene"
+     }
+    },
+    {
+     "sh": {
+      "degree": 1
+     }
+    }
+   ],
+   "options": {
+    "sh": "vq"
+   }
+  },
+  {
+   "family": "Combinaisons",
+   "name": "views35_gsq",
+   "format": "gsq",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    },
+    {
+     "prune": {
+      "keep_ratio": 0.35,
+      "occlusion": true,
+      "compensate": true,
+      "cameras": "scene"
+     }
+    }
+   ],
+   "options": {
+    "sh": "vq",
+    "codebook": 2048
+   }
+  },
+  {
+   "family": "Formats existants",
+   "name": "splat_antimatter15",
+   "format": "splat",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Formats existants",
+   "name": "playcanvas_compressed_ply",
+   "format": "ext:playcanvas-compressed",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ]
+  },
+  {
+   "family": "Formats existants",
+   "name": "playcanvas_sog",
+   "format": "ext:playcanvas-sog",
+   "steps": [
+    {
+     "clean": {
+      "preset": "light"
+     }
+    }
+   ]
+  }
+ ]
+}

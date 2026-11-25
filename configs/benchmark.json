@@ -1,0 +1,48 @@
+{
+  "description": "Suite de référence : chaque famille isole un type d'algorithme, appliqué au modèle nettoyé (sauf la famille Nettoyage). Qualité mesurée par rapport à la référence ci-dessous.",
+  "reference_label": "entrée + nettoyage moyen",
+  "reference": [{"clean": {"preset": "medium"}}],
+  "external_tools": {
+    "playcanvas-compressed": {
+      "encode": ["splat-transform", "{in}", "{out}"], "decode": ["splat-transform", "{out}", "{back}"],
+      "ext": ".compressed.ply", "install": "npm install -g @playcanvas/splat-transform"
+    },
+    "playcanvas-sog": {
+      "encode": ["splat-transform", "{in}", "{out}"], "decode": ["splat-transform", "{out}", "{back}"],
+      "ext": ".sog", "install": "npm install -g @playcanvas/splat-transform"
+    }
+  },
+  "variants": [
+    {"family": "Référence", "name": "original", "format": "ply", "steps": []},
+    {"family": "Référence", "name": "nettoye_moyen", "format": "ply", "steps": [{"clean": {"preset": "medium"}}]},
+
+    {"family": "Nettoyage", "name": "nettoyage_leger", "format": "ply", "steps": [{"clean": {"preset": "light"}}]},
+    {"family": "Nettoyage", "name": "nettoyage_agressif", "format": "ply", "steps": [{"clean": {"preset": "aggressive"}}]},
+
+    {"family": "Élagage", "name": "proxy_75", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75}}]},
+    {"family": "Élagage", "name": "proxy_50", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.5}}]},
+    {"family": "Élagage", "name": "proxy_35_comp", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.35, "compensate": true}}]},
+    {"family": "Élagage", "name": "views_75", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75, "orbit": 32, "occlusion": true}}]},
+    {"family": "Élagage", "name": "views_50", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.5, "orbit": 32, "occlusion": true}}]},
+    {"family": "Élagage", "name": "views_35", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.35, "orbit": 32, "occlusion": true}}]},
+    {"family": "Élagage", "name": "views_50_comp", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.5, "orbit": 32, "occlusion": true, "compensate": true}}]},
+    {"family": "Élagage", "name": "views_35_comp", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.35, "orbit": 32, "occlusion": true, "compensate": true}}]},
+    {"family": "Élagage", "name": "views_20_comp", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.2, "orbit": 32, "occlusion": true, "compensate": true}}]},
+
+    {"family": "Couleurs (SH)", "name": "sh_2", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"sh": {"degree": 2}}]},
+    {"family": "Couleurs (SH)", "name": "sh_1", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"sh": {"degree": 1}}]},
+    {"family": "Couleurs (SH)", "name": "sh_0", "format": "ply", "steps": [{"clean": {"preset": "medium"}}, {"sh": {"degree": 0}}]},
+
+    {"family": "Quantification", "name": "gsq_vq", "format": "gsq", "steps": [{"clean": {"preset": "medium"}}], "options": {"sh": "vq", "codebook": 4096}},
+    {"family": "Quantification", "name": "gsq_8bit", "format": "gsq", "steps": [{"clean": {"preset": "medium"}}], "options": {"sh": "8bit"}},
+    {"family": "Quantification", "name": "gsq_vq_compact", "format": "gsq", "steps": [{"clean": {"preset": "medium"}}], "options": {"sh": "vq", "codebook": 1024, "pos": "11-10-11", "sh_zero": 0.05}},
+
+    {"family": "Combinaisons", "name": "views75_gsq", "format": "gsq", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.75, "orbit": 32, "occlusion": true, "compensate": true}}], "options": {"sh": "vq"}},
+    {"family": "Combinaisons", "name": "views50_sh1_gsq", "format": "gsq", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.5, "orbit": 32, "occlusion": true, "compensate": true}}, {"sh": {"degree": 1}}], "options": {"sh": "vq"}},
+    {"family": "Combinaisons", "name": "views35_gsq", "format": "gsq", "steps": [{"clean": {"preset": "medium"}}, {"prune": {"keep_ratio": 0.35, "orbit": 32, "occlusion": true, "compensate": true}}], "options": {"sh": "vq", "codebook": 2048}},
+
+    {"family": "Formats existants", "name": "splat_antimatter15", "format": "splat", "steps": [{"clean": {"preset": "medium"}}]},
+    {"family": "Formats existants", "name": "playcanvas_compressed_ply", "format": "ext:playcanvas-compressed", "steps": [{"clean": {"preset": "medium"}}]},
+    {"family": "Formats existants", "name": "playcanvas_sog", "format": "ext:playcanvas-sog", "steps": [{"clean": {"preset": "medium"}}]}
+  ]
+}

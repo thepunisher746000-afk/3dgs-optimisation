@@ -21,8 +21,9 @@ Le portail regroupe tout le projet dans le navigateur :
 | Onglet | Ce qu'on y fait |
 |---|---|
 | **Accueil** | Parcours en 4 étapes, bouton « Essai rapide » (scène de test + toutes les configurations en un clic) |
-| **Modèles** | Importer un .ply par glisser-déposer, voir tous les modèles (taille, nombre de gaussiennes), les ouvrir ou les supprimer |
+| **Modèles** | Importer par glisser-déposer un modèle (.ply, .splat, .ksplat, .spz, .sog) **ou une capture** (vidéo .mp4/.mov…, photos, .zip de photos) : le type est détecté d'après le contenu. Captures : extraction des images nettes, génération du modèle (si un outil d'entraînement est installé, sinon marche à suivre), archive ZIP pour Polycam |
 | **Optimiser** | Chaque outil sous forme de formulaire expliqué (Analyser, Nettoyer, Élaguer, Couleurs SH, Compresser, Tout comparer) ; journal en direct ; bouton pour enchaîner l'étape suivante sur le fichier produit ; la commande équivalente est affichée et copiable |
+| **Benchmark** | Compare toutes les variantes d'algorithmes (taille, PSNR/SSIM, surdessin) par rendu de référence sur CPU ; graphique taille/qualité avec les meilleurs compromis ; images avant/après ; comparaison avec les méthodes publiées (LightGaussian, HAC…) |
 | **Résultats** | Tableaux comparatifs par scène, diagnostic, détail du nettoyage, mesures du visualiseur ; cocher des versions pour les comparer |
 | **Visualiseur** | Banc de mesure (chargement, FPS, PSNR/SSIM) ; les mesures sont enregistrées automatiquement dans Résultats |
 | **Documentation** | Le dossier technique avec formules, sommaire et liens entre chapitres |
@@ -51,11 +52,16 @@ Le serveur n'écoute que sur la machine locale. Les fichiers importés vont dans
 │   ├── sh_reduce.py                 réduction des harmoniques sphériques
 │   ├── gsq.py                       codec expérimental : Morton + quantification + VQ k-means + LZMA
 │   ├── pipeline.py                  applique une matrice de configurations, produit les tableaux
+│   ├── benchmark.py                 benchmark des algorithmes : rendu, PSNR/SSIM, surdessin, front de Pareto
+│   ├── render.py                    rendu de référence 3DGS sur CPU (composition alpha exacte)
+│   ├── formats.py                   détection du type d'un fichier importé (modèle, vidéo, photos…)
+│   ├── train_3dgs.py                capture → modèle 3DGS (nerfstudio ou COLMAP + OpenSplat si installés)
 │   ├── metrics_images.py            PSNR / SSIM / LPIPS hors-ligne
 │   ├── extract_frames.py            extraction des images nettes d'une vidéo de capture
 │   └── make_synthetic.py            scène de test avec défauts connus
 ├── viewer/                       banc de mesure web (Three.js + gaussian-splats-3d)
 ├── configs/default.json          configurations C0…C7 testées par pipeline.py
+├── configs/benchmark.json        suite du benchmark (25 variantes en 7 familles)
 ├── data/                         captures et modèles (non versionnés)
 └── results/                      sorties de pipeline.py et du visualiseur
 ```
