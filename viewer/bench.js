@@ -331,8 +331,38 @@ if (params.get('models')) {
 if (params.get('poses')) {
   fetch(params.get('poses')).then((r) => r.json()).then((p) => { poses = p; updatePoseCount(); applyPose(poses[0]); });
 }
+// Poses réelles de la capture (data/<scène>_cameras.json écrit par train_3dgs.py) : si elles existent, on en
+// déduit l'axe vertical, la vue de départ et les poses du benchmark (positions des vraies photos).
+async function loadScenePoses(url) {
+  const m = url.match(/\/results\/([^/]+)\//) || url.match(/\/data\/([^/]+?)\.(?:ply|splat|ksplat|spz)$/);
+  if (!m) return false;
+  let d;
+  try {
+    const r = await fetch(`/data/${m[1]}_cameras.json`, { cache: 'no-store' });
+    if (!r.ok) return false;
+    d = await r.json();
+  } catch { return false; }
+  const cams = d.cameras || [];
+  if (!cams.length) return false;
+  const toPose = (c) => {
+    const R = c.R, t = c.t;
+    const C = [0, 1, 2].map((i) => -(R[0][i] * t[0] + R[1][i] * t[1] + R[2][i] * t[2]));
+    return { position: C, target: C.map((v, i) => v + R[2][i] * 0.5) };   // regarde le long de l'axe optique
+  };
+  // haut du monde = opposé de la moyenne des axes « bas » des caméras (y OpenCV)
+  const upv = [0, 1, 2].map((i) => -cams.reduce((s, c) => s + c.R[1][i], 0) / cams.length);
+  const n = Math.hypot(...upv) || 1;
+  camera.up.set(upv[0] / n, upv[1] / n, upv[2] / n);
+  poses = cams.filter((_, i) => i % Math.max(1, Math.round(cams.length / 8)) === 0).slice(0, 8).map(toPose);
+  updatePoseCount();
+  applyPose(poses[0]);
+  log(`Poses réelles chargées (${cams.length} photos de ${m[1]}) : vue de départ et ${poses.length} poses de mesure.`);
+  return true;
+}
+
 setUp();
 setResolution();
+if (models.length && models[0].url) loadScenePoses(models[0].url);
 if (models.length) {  // affiche directement le premier modèle demandé
   initialLoad = loadModel(models[0]);
   initialLoad.then((r) => log(`${r.name} : ${r.splatCount} gaussiennes, ${fmt(r.totalMs, 0)} ms`))
